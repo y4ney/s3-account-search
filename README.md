@@ -1,4 +1,4 @@
-# S3 账户搜索
+# S3 account search
 
 此工具可让您查找 S3 存储桶所属的账户 ID。
 

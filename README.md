@@ -1,70 +1,69 @@
-# S3 Account Search
-This tool lets you find the account id an S3 bucket belongs too.
+# S3 账户搜索
 
-For this to work you need to have at least one of these permissions:
+此工具可让您查找 S3 存储桶所属的账户 ID。
 
-- Permission to download a known file from the bucket (`s3:getObject`).
-- Permission to list the contents of the bucket (`s3:ListBucket`).
+要使此工具正常工作，您至少需要具备以下权限之一：
 
-Additionally, you will need a role that you can assume with (one of) these permissions on the bucket 
-you're examining
+- 从存储桶下载已知文件的权限 (`s3:getObject`)。
+- 列出存储桶内容的权限 (`s3:ListBucket`)。
 
-Some more background can be found on the [Cloudar Blog](https://cloudar.be/awsblog/finding-the-account-id-of-any-public-s3-bucket/)
+此外，您还需要一个可以扮演的角色，该角色需具备您正在检查的存储桶的（其中一项）上述权限。
 
-## Installation
-This package is available on pypi, you can for example use on of these commands (pipx is recommended)
+更多背景信息可在 [Cloudar 博客](https://cloudar.be/awsblog/finding-the-account-id-of-any-public-s3-bucket/) 中找到。
+
+## 安装
+
+此软件包可在 PyPI 上获取，例如，您可以使用以下命令之一（建议使用 pipx）
+
 ```shell
 pipx install s3-account-search
 pip install s3-account-search
 ```
 
-## Usage Examples
+## 使用示例
+
 ```shell
-# with a bucket
+# 使用存储桶
 s3-account-search arn:aws:iam::123456789012:role/s3_read s3://my-bucket
 
-# with an object
+# 使用对象
 s3-account-search arn:aws:iam::123456789012:role/s3_read s3://my-bucket/path/to/object.ext
 
-# You can also leave out the s3://
+# 您也可以省略 s3://
 s3-account-search arn:aws:iam::123456789012:role/s3_read my-bucket
 
-# Or start from a specified source profile
+# 或者从指定的源配置文件开始
 s3-account-search --profile source_profile arn:aws:iam::123456789012:role/s3_read s3://my-bucket
 ```
 
-## How this works
-There is an IAM policy condition `s3:ResourceAccount`, that is meant to be used to give access to S3
-in specified (set of) account(s), but also supports wildcards. By constructing the right patterns,
-and seeing which  ones will lead to a Deny or an Allow, we can determine the account id by
-discovering it one digit at a time.
+## 工作原理
 
-1. We verify that we can access the object or bucket with the provided role
-2. We assume the same role again, but this time add a policy that restricts our access to S3 buckets
-   that exist in an account starting with `0`. If our access is allowed we know that the account id
-   has to start with `0`. If the request is denied, we try again with `1` as the first digit. We keep
-   incrementing until our request is allowed, and we find the first digit
-3. We repeat this process for every digit. Using the already discovered digits as a prefix. E.g. if 
-   the first digit was `8`, we test account ids starting with `80`, `81`, `82`, etc.
+存在一个 IAM 策略条件 `s3:ResourceAccount`，它用于授予对指定账户（或账户集合）中的 S3 服务的访问权限，同时也支持通配符。通过构建合适的模式，并观察哪些模式会导致拒绝或允许，我们可以逐位发现账户 ID 来确定它。
 
-## Development
-We use poetry to manage this project
+1. 我们验证使用提供的角色是否可以访问对象或存储桶。
+2. 我们再次承担相同的角色，但这次添加一个策略，将我们的访问权限限制为以 `0` 开头的账户中的 S3 存储桶。如果我们的访问被允许，我们就知道账户 ID 必须以 `0` 开头。如果请求被拒绝，我们将第一位数字改为 `1` 再次尝试。我们不断递增，直到请求被允许，从而找到第一位数字。
+3. 我们对每一位数字重复这个过程。使用已经发现的数字作为前缀。例如，如果第一位数字是 `8`，我们测试以 `80`、`81`、`82` 等开头的账户 ID。
 
-1. Clone this repository
-2. Run `poetry install`
-3. Activate the virtualenvironment with `poetry shell` (you can also use `poetry run $command`)
+## 开发
 
-### Releasing a new version to pypi
-1. Edit pyproject.toml to update the version number
-2. Commit the version number bump
-3. Run `poetry publish --build`
-4. Push to GitHub
-5. Create a new release in GitHub
+我们使用 Poetry 来管理这个项目。
 
+1. 克隆这个仓库。
+2. 运行 `poetry install`。
+3. 使用 `poetry shell` 激活虚拟环境（您也可以使用 `poetry run $command`）。
 
-## Possible improvements
-- Instead of checking one digit at a time, we could use a binary search-like algorithm. Eg. the
-  following condition is equivalent to `s3:ResourceAccount < 500000000000` 
+### 发布新版本到 PyPI
+
+1. 编辑 `pyproject.toml` 以更新版本号。
+2. 提交版本号的变更。
+3. 运行 `poetry publish --build`。
+4. 推送到 GitHub。
+5. 在 GitHub 上创建一个新的版本。
+
+## 可能的改进
+
+- 我们可以使用类似二分查找的算法，而不是逐位检查。例如，以下条件等同于 `s3:ResourceAccount < 500000000000`
+
   ```json
   "Condition": {
     "StringLike": {"s3:ResourceAccount": [
@@ -72,7 +71,7 @@ We use poetry to manage this project
     ]},
   },
    ```
-- Similarly, there is a speed improvement possible by checking multiple digits per position in
-  parallel (There is a small risk of being rate limited by STS when using this approach)
-  
-In practice this tool should be fast enough in most cases.
+
+- 同样地，通过并行检查每个位置的多个数字，有可能提高速度（使用这种方法时，存在被 STS 限流的小风险）。
+
+在实践中，这个工具在大多数情况下应该足够快。
